@@ -1,0 +1,404 @@
+
+// Local Level ===============================================================================================
+//@laplace
+//@brief Local Level 
+//@param real mu1
+//@param vector T-1 z
+//@param real <lower = 0.001>sigma_mu
+//@example mu = lts::local_level(mu, mu1, z, sigma_mu);
+//@return vector mu
+vector local_level(real mu1, vector z, real sigma_mu){
+    int T = num_elements(z) + 1;
+    vector[T] mu;
+    mu[1] = mu1; // Initialize the process
+
+    // Construct mu
+    mu[2:T] = mu1 + sigma_mu * cumulative_sum(z);
+
+    return mu;
+}
+
+//@laplace
+//@brief Local Level 
+//@param real mu1
+//@param vector T-1 z
+//@param real <lower = 0.001>sigma_mu
+//@example mu = lts::local_level(mu, mu1, z, sigma_mu);
+//@return vector mu
+vector local_level(real mu1, vector z, real sigma_mu, matrix X, vector beta){
+    int T = num_elements(z) + 1;
+    vector[T] mu;
+    mu[1] = mu1; // Initialize the process
+
+    // Construct eta covariates matrix and effect
+    vector[T] eta = X * beta;
+
+    // Construct mu
+    mu[2:T] = mu1 + sigma_mu * cumulative_sum(z) + cumulative_sum(eta[2:T]);
+
+    return mu;
+}
+
+//@laplace
+//@brief Local Level Log Pointwise Density Function
+//@param vector mu coming from ts::local_level 
+//@param real <lower = 0.001>sigma_mu
+//@example mu = lts::local_level(mu, sigma_mu);
+//@return vector mu
+real local_level_lpdf(vector mu, real sigma_mu){
+    int T = num_elements(mu);
+    return normal_lpdf(mu[2:T] | mu[1:(T - 1)], sigma_mu);
+}
+
+//@laplace 
+//@brief Local Level Random Number Generator
+vector local_level_rng(real mu1, real sigma_mu, int T){
+    vector[T] mu;
+    mu[1] = mu1;
+
+    for (t in 2:T)
+        mu[t] = mu[t - 1] + normal_rng(0, sigma_mu);
+
+    return mu;
+}
+
+//@laplace 
+//@brief Local Level Random Number Generator
+vector local_level_rng(real mu1, real sigma_mu, int T, matrix X, vector beta){
+    vector[T] mu;
+    mu[1] = mu1;
+
+    for (t in 2:T)
+        mu[t] = mu[t - 1] + normal_rng(0, sigma_mu) + X[t] * beta;
+
+    return mu;
+}
+
+// Local Linear Trend ====================================================================================
+//@laplace 
+//@brief Local Linear Trend 
+//@param real delta1
+//@param real mu1
+//@param real sigma_delta
+//@param real sigma_mu
+//@param vector T zeta_delta
+//@param vector T zeta_mu
+//@param real rho
+//@example mu = lts::local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu, real rho)
+vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu, real rho){
+    int T = num_elements(zeta_mu) + 1;
+
+    // Initialize the process
+    vector[T] mu;
+    vector[T] delta;
+
+    mu[1]    = mu1;
+    delta[1] = delta1;
+    
+    // Local Linear Trend Process for computing mu 
+    for(t in 2:T){
+        delta[t] = rho * delta[t - 1]        + sigma_delta * zeta_delta[t -1];
+        mu[t]    = mu[t - 1] + delta[t - 1]  + sigma_mu    * zeta_mu[t - 1]; 
+    }
+    return mu;
+}
+
+//@laplace 
+//@brief Local Linear Trend 
+//@param real delta1
+//@param real mu1
+//@param real sigma_delta
+//@param real sigma_mu
+//@param vector T zeta_delta
+//@param vector T zeta_mu
+//@param real rho
+//@example mu = lts::local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu, real rho)
+vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu, real rho, matrix X, vector beta){
+    int T = num_elements(zeta_mu) + 1;
+
+    // Initialize the process
+    vector[T] mu;
+    vector[T] delta;
+
+    mu[1]    = mu1;
+    delta[1] = delta1;
+    
+    // Local Linear Trend Process for computing mu with covariates matrix X and beta parameter vector 
+    for(t in 2:T){
+        delta[t] = rho * delta[t - 1]        + sigma_delta * zeta_delta[t -1];
+        mu[t]    = mu[t - 1] + delta[t - 1]  + sigma_mu    * zeta_mu[t - 1] + X[t] * beta; 
+    }
+    return mu;
+}
+
+//@laplace 
+//@brief Local Linear Trend Log Pointwise Density Function  
+//@param real sigma_y
+//@param vector mu coming from lts::local_linear_trend
+real local_linear_trend_lpdf(vector mu, real sigma_y){
+    int T = num_elements(mu);
+    return normal_lpdf(mu[2:T] | mu[2:(T -1)], sigma_y);
+}
+
+//@laplace 
+//@brief Local Linear Trend Random Number Generator
+//@param real delta1
+//@param real mu1
+//@param real sigma_delta
+//@param real sigma_mu
+//@param real rho
+vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigma_mu, real rho, int T){
+    // Initialize the process
+    vector[T] mu;
+    vector[T] delta;
+    mu[1]    = mu1;
+    delta[1] = delta1;
+    
+    // Local Linear Trend Process for computing mu 
+    for(t in 2:T){
+        delta[t] = rho * delta[t - 1]        + normal_rng(0, sigma_delta);
+        mu[t]    = mu[t - 1] + delta[t - 1]  + normal_rng(0, sigma_mu); 
+    }
+    return mu;
+}
+
+//@laplace 
+//@brief Local Linear Trend Random Number Generator
+//@param real delta1
+//@param real mu1
+//@param real sigma_delta
+//@param real sigma_mu
+//@param real rho
+vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigma_mu, real rho, int T, matrix X, vector beta){
+    // Initialize the process
+    vector[T] mu;
+    vector[T] delta;
+    mu[1]    = mu1;
+    delta[1] = delta1;
+    
+    // Local Linear Trend Process for computing mu 
+    for(t in 2:T){
+        delta[t] = rho * delta[t - 1]        + normal_rng(0, sigma_delta);
+        mu[t]    = mu[t - 1] + delta[t - 1]  + normal_rng(0, sigma_mu) + X[t] * beta; 
+    }
+    return mu;
+}
+
+// Stochastic seasonal ===========================================================================================================
+//@laplace 
+//@brief Stochastic seasonal
+//@param vector S-1 s_init
+//@param vector T - s + 1 zs
+//@param real sigma_s
+vector stochastic_seasonal(vector s_init, vector zs, real sigma_s){
+    int S = num_elements(s_init) + 1;
+    int T = num_elements(zs) + S - 1;
+
+    // Initialize 
+    vector[T] seas;
+    seas[1:(S - 1)] = s_init;
+
+    // Stochastic seasonal Process
+    for(t in S:T){
+        seas[t] = -sum(seas[(t - S + 1):(t - 1)]) + sigma_s * zs[t - S + 1];
+    }
+    return seas;
+}
+
+//@laplace 
+//@brief Stochastic seasonal Random Number Generator 
+//@param vector S-1 s_init
+//@param vector T - s + 1 zs
+//@param real sigma_s
+vector stochastic_seasonal_rng(vector s_init, real sigma_s, int T){
+    int S = num_elements(s_init) + 1;
+
+    // Initialize 
+    vector[T] seas;
+    seas[1:(S - 1)] = s_init;
+
+    // Stochastic seasonal Process
+    for(t in S:T){
+        seas[t] = -sum(seas[(t - S + 1):(t - 1)]) + normal_rng(0, sigma_s);
+    }
+    return seas;
+}
+
+// Trigonometric seasonal ========================================================================================================
+// Helper Trig preparation 
+//@laplace 
+//@brief Trigonometric seasonal data preparation 
+//@param real period 
+//@param vector K Number of Harmonics 
+array[] vector trigonometric_prep(real period, vector K){
+    int N = num_elements(K);
+    array[2] vector[N] cos_sin;
+
+    for(i in 1:N){
+        cos_sin[1][i] = cos(2 * pi() * i / period); 
+        cos_sin[2][i] = sin(2 * pi() * i / period); 
+    }
+    return cos_sin;
+}
+
+//@laplace 
+//@brief Trigonometric seasonal 
+//@param vector K g1
+//@param vector K g1_star
+//@param matrix[T-1, K] z_g;
+//@param matrix[T-1, K] z_gs;
+//@param real sigma_gamma
+//@param array[2] vector[K] sin_cos coming from lts::trigonometric_prep
+vector trigonometric_seasonal(vector g1, vector g1_star, matrix z_g, matrix z_gs, real sigma_gamma, array[] vector cos_sin){
+    int T = rows(z_g) + 1;
+    int K = cols(z_g);
+
+    // Initialize The Trigonometric seasonal Process
+    matrix[T, K] g;
+    matrix[T, K] g_star;
+    vector[T] seas;
+    g[1]      = g1';
+    g_star[1] = g1_star';
+
+    // Trigonometric seasonal Process
+    for(t in 2:T){
+        for(k in 1:K){
+            g[t, k]      = cos_sin[1][k] * g[t - 1, k] + cos_sin[2][k] * g_star[t - 1, k] + sigma_gamma * z_g[t - 1, k];
+            g_star[t, k] = -cos_sin[2][k] * g[t - 1, k] + cos_sin[1][k] * g_star[t - 1, k] + sigma_gamma * z_gs[t -1, k];
+        }
+    }
+    for(t in 1:T) seas[t] = sum(g[t]);
+
+    return seas;
+} 
+
+//@laplace 
+//@brief Trigonometric seasonal Random Number Generator
+//@param vector K g1
+//@param vector K g1_star
+//@param real sigma_gamma
+//@param array[2] vector[K] sin_cos coming from lts::trigonometric_prep
+vector trigonometric_seasonal_rng(vector g1, vector g1_star, real sigma_gamma, array[] vector cos_sin, int T, int K){
+    // Initialize The Trigonometric seasonal Process
+    matrix[T, K] g;
+    matrix[T, K] g_star;
+    vector[T] seas;
+    g[1]      = g1';
+    g_star[1] = g1_star';
+
+    // Trigonometric seasonal Process
+    for(t in 2:T){
+        for(k in 1:K){
+            g[t, k]      = cos_sin[1][k] * g[t - 1, k] + cos_sin[2][k] * g_star[t - 1, k]  + normal_rng(0, sigma_gamma);
+            g_star[t, k] = -cos_sin[2][k] * g[t - 1, k] + cos_sin[1][k] * g_star[t - 1, k] + normal_rng(0, sigma_gamma);
+        }
+    }
+    for(t in 1:T) seas[t] = sum(g[t]);
+
+    return seas;
+} 
+
+// Stochastic volatility =========================================================================================================
+//@laplace 
+//@brief Stochastic volatility
+//@param real mu_h;
+//@param real sigma_h;
+//@param real rho;
+//@param vector T z;
+vector stochastic_volatility(real mu_h, real sigma_h, real rho, vector z){
+    int T = num_elements(z);
+    vector[T] h;
+
+    // Stationary Initialization
+    h[1] = mu_h + sigma_h  / sqrt(1 - square(rho)) * z[1];
+
+    // Stochastic volatility Process
+    for(t in 2:T){
+        h[t] = mu_h + rho * (h[t - 1] - mu_h) + sigma_h * z[t];
+    }
+    return h;
+}
+
+//@laplace 
+//@brief Stochastic volatility Random Number Generator
+//@param real mu_h;
+//@param real sigma_h;
+//@param real rho;
+//@param vector T z;
+vector stochastic_volatility_rng(real mu_h, real sigma_h, real rho, int T){
+    vector[T] h;
+    // Stationary Initialization
+    h[1] = mu_h + normal_rng(0, sigma_h)  / sqrt(1 - square(rho));
+
+    // Stochastic volatility Process
+    for(t in 2:T){
+        h[t] = mu_h + rho * (h[t - 1] - mu_h) + normal_rng(0, sigma_h);
+    }
+    return h;
+}
+
+//@laplace 
+//@brief Stochastic volatility Log Pointwise Density Function
+//@param vector h;
+//@param vector mu;
+//@param vector y_obs;
+real stochastic_volatility_lpdf(vector y_obs, vector h, vector mu){
+    return normal_lpdf(y_obs | mu, exp(h / 2));
+}
+
+
+// Latent-Gaussian counts ========================================================================================================
+//@laplace
+//@brief Latent-Gaussian counts
+//@param real rho
+//@param real sigma_u
+//@param vector T z;
+vector latent_gaussian_counts(real rho, real sigma_u, vector z){
+    int T = num_elements(z);
+    vector[T] u;
+
+    // Initialize the Process
+    u[1] = sigma_u / sqrt(1 - square(rho)) * z[1];
+    
+    // Latent-Gaussian counts Process
+    for(t in 2:T){
+        u[t] = rho  * u[t - 1] + sigma_u * z[t];
+    }
+    return u;
+}
+
+//@laplace
+//@brief Latent-Gaussian counts
+//@param real rho
+//@param real sigma_u
+vector latent_gaussian_counts_rng(real rho, real sigma_u, int T){
+    vector[T] u;
+
+    // Initialize the Process
+    u[1] = normal_rng(0, sigma_u) / sqrt(1 - square(rho));
+    
+    // Latent-Gaussian counts Process
+    for(t in 2:T){
+        u[t] = rho  * u[t - 1] + normal_rng(0, sigma_u);
+    }
+    return u;
+}
+
+//@laplace
+//@brief Latent-Gaussian counts Log Pointwise Mass Function 
+//@param array[] int y, 
+//@param vector u,
+//@param matrix X,
+//@param vector beta
+real latent_gaussian_counts_lpmf(array[] int y, vector u, matrix X, vector beta){
+    vector[num_elements(u)] log_lambda = X * beta + u;
+    return poisson_lpmf(y | exp(log_lambda));
+}
+
+//@laplace
+//@brief Latent-Gaussian counts Log Pointwise Mass Function 
+//@param array[] int y, 
+//@param vector u,
+real latent_gaussian_counts_lpmf(array[] int y, vector u){
+    return poisson_lpmf(y | exp(u));
+}
