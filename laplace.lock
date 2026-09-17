@@ -1,0 +1,8 @@
+root = ["lts"]
+
+[[package]]
+name = "lts"
+version = "0.1.0"
+checksum = "sha256:12c98fcfcbfee75ae580f31ef4f70436fb9f2f0058ff90ad0fe983a44a0caa93"
+source = "git+https://github.com/mlatinov/laplace-lts@0.1.0#laplace"
+dependencies = []

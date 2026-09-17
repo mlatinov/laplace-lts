@@ -1,0 +1,4 @@
+[dependencies.lts]
+git = "https://github.com/mlatinov/laplace-lts"
+tag = "0.1.0"
+subdir = "laplace"
