@@ -119,11 +119,25 @@ which says any $S$ consecutive effects sum to about zero. Without that, the seas
 The **trigonometric** seasonal rotates each harmonic pair by its own frequency $\lambda_k = 2\pi k / \text{period}$:
 
 $$
-\begin{pmatrix}\gamma_{k,t}\\ \gamma^{*}_{k,t}\end{pmatrix} \sim
-\mathcal{N}\!\left(
-\begin{pmatrix}\cos\lambda_k & \sin\lambda_k\\ -\sin\lambda_k & \cos\lambda_k\end{pmatrix}
-\begin{pmatrix}\gamma_{k,t-1}\\ \gamma^{*}_{k,t-1}\end{pmatrix},\ \sigma_\gamma\right),
-\qquad s_t = \sum_{k=1}^{K}\gamma_{k,t}
+\begin{pmatrix}
+\gamma_{k,t} \\
+\gamma^*_{k,t}
+\end{pmatrix}
+\sim
+\mathcal{N}
+\left(
+\begin{pmatrix}
+\cos(\lambda_k) & \sin(\lambda_k) \\
+-\sin(\lambda_k) & \cos(\lambda_k)
+\end{pmatrix}
+\begin{pmatrix}
+\gamma_{k,t-1} \\
+\gamma^*_{k,t-1}
+\end{pmatrix},
+\sigma_\gamma
+\right),
+\qquad
+s_t = \sum_{k=1}^{K} \gamma_{k,t}
 $$
 
 The difference that matters: the dummy seasonal spends $S-1$ parameters per time point and imposes no smoothness, while the trigonometric one spends $2K$ and lets you control smoothness through $K$ independently of the period. For monthly data with $S = 12$ they are comparable. For daily data with a yearly cycle, $S = 365.25$ is unusable as a dummy seasonal and perfectly ordinary with $K = 6$ harmonics. Either becomes a *fixed* seasonal pattern when its innovation scale is zero, at which point you may as well use plain Fourier regressors and skip the component entirely.
