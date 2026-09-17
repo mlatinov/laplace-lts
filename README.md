@@ -111,34 +111,22 @@ The primary returns only $\mu$; the slope path stays internal. The centred `_sta
 The **dummy** seasonal encodes its identification constraint in the mean:
 
 $$
-s_t \sim \mathcal{N}\!\left(-\sum_{j=1}^{S-1} s_{t-j},\ \sigma_s\right)
+s_t \sim \mathcal{N}\left(-\sum_{j=1}^{S-1} s_{t-j},\ \sigma_s\right)
 $$
 
 which says any $S$ consecutive effects sum to about zero. Without that, the seasonal component and the level are not separately identified and the level drifts to absorb whatever the seasonal doesn't.
 
 The **trigonometric** seasonal rotates each harmonic pair by its own frequency $\lambda_k = 2\pi k / \text{period}$:
 
-$$
-\begin{pmatrix}
-\gamma_{k,t} \\
-\gamma^*_{k,t}
-\end{pmatrix}
-\sim
-\mathcal{N}
-\left(
-\begin{pmatrix}
-\cos(\lambda_k) & \sin(\lambda_k) \\
--\sin(\lambda_k) & \cos(\lambda_k)
-\end{pmatrix}
-\begin{pmatrix}
-\gamma_{k,t-1} \\
-\gamma^*_{k,t-1}
-\end{pmatrix},
-\sigma_\gamma
-\right),
-\qquad
-s_t = \sum_{k=1}^{K} \gamma_{k,t}
-$$
+```math
+\begin{pmatrix}\gamma_{k,t}\\ \gamma^{*}_{k,t}\end{pmatrix} \sim
+\mathcal{N}\left(
+\begin{pmatrix}\cos\lambda_k & \sin\lambda_k\\ -\sin\lambda_k & \cos\lambda_k\end{pmatrix}
+\begin{pmatrix}\gamma_{k,t-1}\\ \gamma^{*}_{k,t-1}\end{pmatrix},\ \sigma_\gamma\right),
+\qquad s_t = \sum_{k=1}^{K}\gamma_{k,t}
+```
+
+In the library the conjugate $\gamma^{\ast}$ is called `g_star` and its innovations `z_gs`.
 
 The difference that matters: the dummy seasonal spends $S-1$ parameters per time point and imposes no smoothness, while the trigonometric one spends $2K$ and lets you control smoothness through $K$ independently of the period. For monthly data with $S = 12$ they are comparable. For daily data with a yearly cycle, $S = 365.25$ is unusable as a dummy seasonal and perfectly ordinary with $K = 6$ harmonics. Either becomes a *fixed* seasonal pattern when its innovation scale is zero, at which point you may as well use plain Fourier regressors and skip the component entirely.
 
@@ -154,7 +142,7 @@ The difference that matters: the dummy seasonal spends $S-1$ parameters per time
 Both are AR(1) latent paths started from their stationary distribution, which for a scalar state is available in closed form and needs no Lyapunov solve:
 
 $$
-h_1 \sim \mathcal{N}\!\left(\mu_h,\ \frac{\sigma_h}{\sqrt{1 - \rho^2}}\right)
+h_1 \sim \mathcal{N}\left(\mu_h,\ \frac{\sigma_h}{\sqrt{1 - \rho^2}}\right)
 $$
 
 `stochastic_volatility` is the latent-state answer to the same question GARCH answers observation-driven. GARCH makes the variance a deterministic function of past returns; this gives the variance its own noise. It fits worse per parameter and forecasts volatility better, and it is the harder of the two to sample — non-centred is not optional here.
@@ -255,7 +243,8 @@ model {
 
 generated quantities {
   vector[H] level_f    = lts::local_level_forecast_rng(level[T], sigma_mu, H);
-  vector[H] seasonal_f = lts::stochastic_seasonal_forecast_rng(seasonal[(T - S + 2):T], sigma_s, H);
+  vector[H] seasonal_f = lts::stochastic_seasonal_forecast_rng(
+                           seasonal[(T - S + 2):T], sigma_s, H);
 
   vector[H] y_forecast = to_vector(
     normal_rng(level_f + seasonal_f + X_future * beta, sigma_y)
