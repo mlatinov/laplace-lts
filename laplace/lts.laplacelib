@@ -15,8 +15,10 @@
 //   <name>_forecast_rng(...)   continue an existing path H steps from its final state.
 //
 // Non-centred is the default for a reason: with a weakly informative sigma the centred version
-// has a funnel geometry and will divergence-storm. Reach for _state_lpdf only when the data are
-// strong enough that the funnel closes.
+// has a funnel geometry. It does not always announce itself with divergences -- it can instead show
+// up as E-BFMI below 0.3 and R-hat well above 1.01 with only a handful of divergent transitions --
+// so check R-hat and E-BFMI, not just the divergence count. Reach for _state_lpdf only when the data
+// are strong enough that the funnel closes.
 //
 // Covariate overloads append `matrix X, vector beta`.
 // =============================================================================================================
@@ -66,7 +68,7 @@ vector local_level(real mu1, vector z, real sigma_mu, matrix X, vector beta){
 }
 
 //@laplace
-//@brief Local Level state density. CENTRED alternative to lts::local_level — use one or the other.
+//@brief Local Level state density. CENTRED alternative to lts::local_level. Prefer lts::local_level (non-centred) by default: with weakly informed scales this form has a funnel and may fail to converge (low E-BFMI, R-hat above 1.01) even without many divergences. Use it only when the data pin the state down tightly, and never together with lts::local_level.
 //@param vector mu The level path, declared as a parameter
 //@param real sigma_mu Level innovation scale, sigma_mu > 0
 //@example target += lts::local_level_state_lpdf(mu | sigma_mu);
@@ -78,7 +80,7 @@ real local_level_state_lpdf(vector mu, real sigma_mu){
 }
 
 //@laplace
-//@brief Local Level state density with covariate-driven drift. CENTRED alternative to lts::local_level.
+//@brief Local Level state density with covariate-driven drift. CENTRED alternative to lts::local_level. Prefer lts::local_level (non-centred) by default: with weakly informed scales this form has a funnel and may fail to converge (low E-BFMI, R-hat above 1.01) even without many divergences. Use it only when the data pin the state down tightly, and never together with lts::local_level.
 //@param vector mu The level path, declared as a parameter
 //@param real sigma_mu Level innovation scale, sigma_mu > 0
 //@param matrix X Covariates, T rows. Row 1 is never used.
@@ -212,7 +214,7 @@ vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu
 }
 
 //@laplace
-//@brief Local Linear Trend state density. CENTRED alternative to lts::local_linear_trend — use one or the other.
+//@brief Local Linear Trend state density. CENTRED alternative to lts::local_linear_trend. Prefer lts::local_linear_trend (non-centred) by default: with weakly informed scales this form has a funnel and may fail to converge (low E-BFMI, R-hat above 1.01) even without many divergences. Use it only when the data pin the state down tightly, and never together with lts::local_linear_trend.
 //@param vector mu The level path, declared as a parameter, length T
 //@param vector delta The slope path, declared as a parameter, length T
 //@param real sigma_mu Level innovation scale
@@ -328,7 +330,7 @@ vector stochastic_seasonal(vector s_init, vector zs, real sigma_s){
 }
 
 //@laplace
-//@brief Stochastic seasonal state density. CENTRED alternative to lts::stochastic_seasonal — use one or the other.
+//@brief Stochastic seasonal state density. CENTRED alternative to lts::stochastic_seasonal. Prefer lts::stochastic_seasonal (non-centred) by default: with weakly informed scales this form has a funnel and may fail to converge (low E-BFMI, R-hat above 1.01) even without many divergences. Use it only when the data pin the state down tightly, and never together with lts::stochastic_seasonal.
 //@param vector seas The seasonal path, declared as a parameter, length T
 //@param int S Seasonal period
 //@param real sigma_s Seasonal innovation scale
@@ -439,7 +441,7 @@ vector trigonometric_seasonal(vector g1, vector g1_star, matrix z_g, matrix z_gs
 }
 
 //@laplace
-//@brief Trigonometric seasonal state density. CENTRED alternative to lts::trigonometric_seasonal — use one or the other.
+//@brief Trigonometric seasonal state density. CENTRED alternative to lts::trigonometric_seasonal. Prefer lts::trigonometric_seasonal (non-centred) by default: with weakly informed scales this form has a funnel and may fail to converge (low E-BFMI, R-hat above 1.01) even without many divergences. Use it only when the data pin the state down tightly, and never together with lts::trigonometric_seasonal.
 //@param matrix g The harmonic paths, declared as a parameter, T rows by K columns
 //@param matrix g_star The conjugate harmonic paths, same shape
 //@param real sigma_gamma Harmonic innovation scale
@@ -543,7 +545,7 @@ vector stochastic_volatility(real mu_h, real sigma_h, real rho, vector z){
 }
 
 //@laplace
-//@brief Stochastic volatility state density. CENTRED alternative to lts::stochastic_volatility — use one or the other.
+//@brief Stochastic volatility state density. CENTRED alternative to lts::stochastic_volatility. Prefer lts::stochastic_volatility (non-centred) by default: with weakly informed scales this form has a funnel and may fail to converge (low E-BFMI, R-hat above 1.01) even without many divergences. Use it only when the data pin the state down tightly, and never together with lts::stochastic_volatility.
 //@param vector h The log-variance path, declared as a parameter
 //@param real mu_h Mean log variance
 //@param real sigma_h Log-variance innovation scale
@@ -634,7 +636,7 @@ vector latent_gaussian_counts(real rho, real sigma_u, vector z){
 }
 
 //@laplace
-//@brief Latent-Gaussian counts state density. CENTRED alternative to lts::latent_gaussian_counts — use one or the other.
+//@brief Latent-Gaussian counts state density. CENTRED alternative to lts::latent_gaussian_counts. Prefer lts::latent_gaussian_counts (non-centred) by default: with weakly informed scales this form has a funnel and may fail to converge (low E-BFMI, R-hat above 1.01) even without many divergences. Use it only when the data pin the state down tightly, and never together with lts::latent_gaussian_counts.
 //@param vector u The latent path, declared as a parameter
 //@param real rho Persistence, abs(rho) < 1
 //@param real sigma_u Innovation scale
