@@ -1,5 +1,5 @@
 name = "lts"
-version = "0.1.0"
+version = "0.1.1"
 exports = [
     "local_level",
     "local_level_state_lpdf",
