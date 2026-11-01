@@ -30,7 +30,7 @@
 //@example vector mu = lts::local_level(mu1, z, sigma_mu);
 //@math \mu_t = \mu_{t-1} + \sigma_\mu z_t, \quad\text{written non-centred as}\quad \mu_t = \mu_1 + \sigma_\mu\sum_{k=2}^{t} z_k
 //@return vector[T] mu, with T = num_elements(z) + 1
-vector local_level(real mu1, vector z, real sigma_mu){
+pub vector local_level(real mu1, vector z, real sigma_mu){
     int T = num_elements(z) + 1;
     vector[T] mu;
     mu[1] = mu1; // Initialize the process
@@ -51,7 +51,7 @@ vector local_level(real mu1, vector z, real sigma_mu){
 //@example vector mu = lts::local_level(mu1, z, sigma_mu, X, beta);
 //@math \mu_t = \mu_{t-1} + x_t^\top\beta + \sigma_\mu z_t. NOTE the covariate enters the INCREMENT, so its effect accumulates: a constant covariate produces a linear trend and \beta is a drift, not a level shift. For a level-shift regression put x_t^\top\beta in the observation mean instead and use the plain overload.
 //@return vector[T] mu, with T = num_elements(z) + 1
-vector local_level(real mu1, vector z, real sigma_mu, matrix X, vector beta){
+pub vector local_level(real mu1, vector z, real sigma_mu, matrix X, vector beta){
     int T = num_elements(z) + 1;
     vector[T] mu;
     mu[1] = mu1; // Initialize the process
@@ -72,7 +72,7 @@ vector local_level(real mu1, vector z, real sigma_mu, matrix X, vector beta){
 //@example target += lts::local_level_state_lpdf(mu | sigma_mu);
 //@math \log p(\mu_{2:T} \mid \mu_1) = \sum_{t=2}^{T}\log\mathcal{N}(\mu_t \mid \mu_{t-1}, \sigma_\mu). \mu_1 gets an improper flat prior here, so give it one of your own in the model block.
 //@return real Log density of the level path given mu[1]
-real local_level_state_lpdf(vector mu, real sigma_mu){
+pub real local_level_state_lpdf(vector mu, real sigma_mu){
     int T = num_elements(mu);
     return normal_lpdf(mu[2:T] | mu[1:(T - 1)], sigma_mu);
 }
@@ -86,7 +86,7 @@ real local_level_state_lpdf(vector mu, real sigma_mu){
 //@example target += lts::local_level_state_lpdf(mu | sigma_mu, X, beta);
 //@math \log p(\mu_{2:T} \mid \mu_1) = \sum_{t=2}^{T}\log\mathcal{N}(\mu_t \mid \mu_{t-1} + x_t^\top\beta, \sigma_\mu)
 //@return real Log density of the level path given mu[1]
-real local_level_state_lpdf(vector mu, real sigma_mu, matrix X, vector beta){
+pub real local_level_state_lpdf(vector mu, real sigma_mu, matrix X, vector beta){
     int T = num_elements(mu);
     vector[T] eta = X * beta;
     return normal_lpdf(mu[2:T] | mu[1:(T - 1)] + eta[2:T], sigma_mu);
@@ -100,7 +100,7 @@ real local_level_state_lpdf(vector mu, real sigma_mu, matrix X, vector beta){
 //@example vector mu = lts::local_level_rng(mu1, sigma_mu, T);
 //@math \mu_t \sim \mathcal{N}(\mu_{t-1}, \sigma_\mu)
 //@return vector[T] A simulated level path
-vector local_level_rng(real mu1, real sigma_mu, int T){
+pub vector local_level_rng(real mu1, real sigma_mu, int T){
     vector[T] mu;
     mu[1] = mu1;
 
@@ -119,7 +119,7 @@ vector local_level_rng(real mu1, real sigma_mu, int T){
 //@param vector beta Covariate coefficients
 //@math \mu_t \sim \mathcal{N}(\mu_{t-1} + x_t^\top\beta, \sigma_\mu), so the covariate effect accumulates along the path
 //@return vector[T] A simulated level path
-vector local_level_rng(real mu1, real sigma_mu, int T, matrix X, vector beta){
+pub vector local_level_rng(real mu1, real sigma_mu, int T, matrix X, vector beta){
     vector[T] mu;
     mu[1] = mu1;
 
@@ -137,7 +137,7 @@ vector local_level_rng(real mu1, real sigma_mu, int T, matrix X, vector beta){
 //@example vector mu_f = lts::local_level_forecast_rng(mu[T], sigma_mu, H);
 //@math \mu_{T+h} \sim \mathcal{N}(\mu_{T+h-1}, \sigma_\mu). The forecast mean is flat at \mu_T and the variance grows linearly in h.
 //@return vector[H] Forecast level path for t = T+1,...,T+H
-vector local_level_forecast_rng(real mu_last, real sigma_mu, int H){
+pub vector local_level_forecast_rng(real mu_last, real sigma_mu, int H){
     vector[H] mu_f;
     real current = mu_last;
 
@@ -161,7 +161,7 @@ vector local_level_forecast_rng(real mu_last, real sigma_mu, int H){
 //@example vector mu = lts::local_linear_trend(delta1, mu1, sigma_delta, sigma_mu, zeta_delta, zeta_mu, rho);
 //@math \delta_t = \rho\,\delta_{t-1} + \sigma_\delta\,\zeta^{\delta}_t \\ \mu_t = \mu_{t-1} + \delta_{t-1} + \sigma_\mu\,\zeta^{\mu}_t
 //@return vector[T] mu, with T = num_elements(zeta_mu) + 1. The slope path is internal and not returned.
-vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu, real rho){
+pub vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu, real rho){
     int T = num_elements(zeta_mu) + 1;
 
     // Initialize the process
@@ -193,7 +193,7 @@ vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu
 //@example vector mu = lts::local_linear_trend(delta1, mu1, sigma_delta, sigma_mu, zeta_delta, zeta_mu, rho, X, beta);
 //@math \mu_t = \mu_{t-1} + \delta_{t-1} + x_t^\top\beta + \sigma_\mu\zeta^{\mu}_t. As in local_level, the covariate enters the INCREMENT and its effect accumulates.
 //@return vector[T] mu, with T = num_elements(zeta_mu) + 1
-vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu, real rho, matrix X, vector beta){
+pub vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu, real rho, matrix X, vector beta){
     int T = num_elements(zeta_mu) + 1;
 
     // Initialize the process
@@ -221,7 +221,7 @@ vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu
 //@example target += lts::local_linear_trend_state_lpdf(mu | delta, sigma_mu, sigma_delta, rho);
 //@math \log p(\mu, \delta) = \sum_{t=2}^{T}\log\mathcal{N}(\mu_t \mid \mu_{t-1} + \delta_{t-1}, \sigma_\mu) + \sum_{t=2}^{T}\log\mathcal{N}(\delta_t \mid \rho\,\delta_{t-1}, \sigma_\delta). Both paths are scored, so declare both as parameters and give mu[1] and delta[1] their own priors.
 //@return real Joint log density of the level and slope paths given their first values
-real local_linear_trend_state_lpdf(vector mu, vector delta, real sigma_mu, real sigma_delta, real rho){
+pub real local_linear_trend_state_lpdf(vector mu, vector delta, real sigma_mu, real sigma_delta, real rho){
     int T = num_elements(mu);
     return normal_lpdf(mu[2:T]    | mu[1:(T - 1)] + delta[1:(T - 1)], sigma_mu)
          + normal_lpdf(delta[2:T] | rho * delta[1:(T - 1)],           sigma_delta);
@@ -237,7 +237,7 @@ real local_linear_trend_state_lpdf(vector mu, vector delta, real sigma_mu, real 
 //@param int T Path length
 //@math \delta_t \sim \mathcal{N}(\rho\delta_{t-1}, \sigma_\delta), \quad \mu_t \sim \mathcal{N}(\mu_{t-1} + \delta_{t-1}, \sigma_\mu)
 //@return vector[T] A simulated level path
-vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigma_mu, real rho, int T){
+pub vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigma_mu, real rho, int T){
     // Initialize the process
     vector[T] mu;
     vector[T] delta;
@@ -264,7 +264,7 @@ vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigm
 //@param vector beta Covariate coefficients
 //@math \mu_t \sim \mathcal{N}(\mu_{t-1} + \delta_{t-1} + x_t^\top\beta, \sigma_\mu)
 //@return vector[T] A simulated level path
-vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigma_mu, real rho, int T, matrix X, vector beta){
+pub vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigma_mu, real rho, int T, matrix X, vector beta){
     // Initialize the process
     vector[T] mu;
     vector[T] delta;
@@ -289,7 +289,7 @@ vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigm
 //@param int H Forecast horizon
 //@math \delta_{T+h}\sim\mathcal{N}(\rho\delta_{T+h-1},\sigma_\delta), \quad \mu_{T+h}\sim\mathcal{N}(\mu_{T+h-1} + \delta_{T+h-1},\sigma_\mu). With rho = 1 the forecast variance grows cubically in h; damping is what keeps long horizons usable.
 //@return vector[H] Forecast level path for t = T+1,...,T+H
-vector local_linear_trend_forecast_rng(real mu_last, real delta_last, real sigma_mu, real sigma_delta, real rho, int H){
+pub vector local_linear_trend_forecast_rng(real mu_last, real delta_last, real sigma_mu, real sigma_delta, real rho, int H){
     vector[H] mu_f;
     real mu_current    = mu_last;
     real delta_current = delta_last;
@@ -312,7 +312,7 @@ vector local_linear_trend_forecast_rng(real mu_last, real delta_last, real sigma
 //@example vector seas = lts::stochastic_seasonal(s_init, zs, sigma_s);
 //@math s_t = -\sum_{j=1}^{S-1} s_{t-j} + \sigma_s z_t. The mean encodes the identification constraint that any S consecutive seasonal effects sum to zero.
 //@return vector[T] The seasonal path, T = num_elements(zs) + S - 1
-vector stochastic_seasonal(vector s_init, vector zs, real sigma_s){
+pub vector stochastic_seasonal(vector s_init, vector zs, real sigma_s){
     int S = num_elements(s_init) + 1;
     int T = num_elements(zs) + S - 1;
 
@@ -335,7 +335,7 @@ vector stochastic_seasonal(vector s_init, vector zs, real sigma_s){
 //@example target += lts::stochastic_seasonal_state_lpdf(seas | S, sigma_s);
 //@math \log p(s_{S:T}) = \sum_{t=S}^{T}\log\mathcal{N}\!\left(s_t \mid -\sum_{j=1}^{S-1}s_{t-j},\ \sigma_s\right). The first S-1 effects are conditioned on; give them their own prior.
 //@return real Log density of the seasonal path given its first S-1 values
-real stochastic_seasonal_state_lpdf(vector seas, int S, real sigma_s){
+pub real stochastic_seasonal_state_lpdf(vector seas, int S, real sigma_s){
     int T = num_elements(seas);
     vector[T - S + 1] mu_s;
 
@@ -352,7 +352,7 @@ real stochastic_seasonal_state_lpdf(vector seas, int S, real sigma_s){
 //@param int T Path length
 //@math s_t \sim \mathcal{N}\!\left(-\sum_{j=1}^{S-1}s_{t-j},\ \sigma_s\right)
 //@return vector[T] A simulated seasonal path
-vector stochastic_seasonal_rng(vector s_init, real sigma_s, int T){
+pub vector stochastic_seasonal_rng(vector s_init, real sigma_s, int T){
     int S = num_elements(s_init) + 1;
 
     // Initialize
@@ -374,7 +374,7 @@ vector stochastic_seasonal_rng(vector s_init, real sigma_s, int T){
 //@example vector seas_f = lts::stochastic_seasonal_forecast_rng(seas[(T - S + 2):T], sigma_s, H);
 //@math s_{T+h} \sim \mathcal{N}\!\left(-\sum_{j=1}^{S-1}s_{T+h-j},\ \sigma_s\right), using drawn values once the horizon passes S
 //@return vector[H] Forecast seasonal path for t = T+1,...,T+H
-vector stochastic_seasonal_forecast_rng(vector seas_last, real sigma_s, int H){
+pub vector stochastic_seasonal_forecast_rng(vector seas_last, real sigma_s, int H){
     int Sm1 = num_elements(seas_last);
     vector[Sm1 + H] full;
     full[1:Sm1] = seas_last;
@@ -394,7 +394,7 @@ vector stochastic_seasonal_forecast_rng(vector seas_last, real sigma_s, int H){
 //@example array[2] vector[K] cos_sin = lts::trigonometric_prep(12.0, 3);
 //@math \lambda_k = \frac{2\pi k}{\text{period}}, \quad \text{returns } (\cos\lambda_k, \sin\lambda_k)
 //@return array[2] vector[K]: position 1 holds the cosines, position 2 the sines
-array[] vector trigonometric_prep(real period, int K){
+pub array[] vector trigonometric_prep(real period, int K){
     array[2] vector[K] cos_sin;
 
     for(i in 1:K){
@@ -415,7 +415,7 @@ array[] vector trigonometric_prep(real period, int K){
 //@example vector seas = lts::trigonometric_seasonal(g1, g1_star, z_g, z_gs, sigma_gamma, cos_sin);
 //@math \begin{pmatrix}\gamma_{k,t}\\ \gamma^{*}_{k,t}\end{pmatrix} = \begin{pmatrix}\cos\lambda_k & \sin\lambda_k\\ -\sin\lambda_k & \cos\lambda_k\end{pmatrix}\begin{pmatrix}\gamma_{k,t-1}\\ \gamma^{*}_{k,t-1}\end{pmatrix} + \sigma_\gamma z_{k,t}, \qquad s_t = \sum_{k=1}^{K}\gamma_{k,t}
 //@return vector[T] The seasonal path, T = rows(z_g) + 1
-vector trigonometric_seasonal(vector g1, vector g1_star, matrix z_g, matrix z_gs, real sigma_gamma, array[] vector cos_sin){
+pub vector trigonometric_seasonal(vector g1, vector g1_star, matrix z_g, matrix z_gs, real sigma_gamma, array[] vector cos_sin){
     int T = rows(z_g) + 1;
     int K = cols(z_g);
 
@@ -447,7 +447,7 @@ vector trigonometric_seasonal(vector g1, vector g1_star, matrix z_g, matrix z_gs
 //@example target += lts::trigonometric_seasonal_state_lpdf(g | g_star, sigma_gamma, cos_sin);
 //@math \log p(\gamma, \gamma^{*}) = \sum_{t=2}^{T}\sum_{k=1}^{K}\left[\log\mathcal{N}(\gamma_{k,t} \mid \cos\lambda_k\gamma_{k,t-1} + \sin\lambda_k\gamma^{*}_{k,t-1},\ \sigma_\gamma) + \log\mathcal{N}(\gamma^{*}_{k,t} \mid -\sin\lambda_k\gamma_{k,t-1} + \cos\lambda_k\gamma^{*}_{k,t-1},\ \sigma_\gamma)\right]. The seasonal path itself is then \sum_k \gamma_{k,t}.
 //@return real Joint log density of both harmonic paths given their first rows
-real trigonometric_seasonal_state_lpdf(matrix g, matrix g_star, real sigma_gamma, array[] vector cos_sin){
+pub real trigonometric_seasonal_state_lpdf(matrix g, matrix g_star, real sigma_gamma, array[] vector cos_sin){
     int T = rows(g);
     int K = cols(g);
     real lp = 0;
@@ -469,7 +469,7 @@ real trigonometric_seasonal_state_lpdf(matrix g, matrix g_star, real sigma_gamma
 //@param int K Number of harmonics
 //@math The same rotation recursion, drawing the innovations instead of taking them as arguments
 //@return vector[T] A simulated seasonal path
-vector trigonometric_seasonal_rng(vector g1, vector g1_star, real sigma_gamma, array[] vector cos_sin, int T, int K){
+pub vector trigonometric_seasonal_rng(vector g1, vector g1_star, real sigma_gamma, array[] vector cos_sin, int T, int K){
     // Initialize The Trigonometric seasonal Process
     matrix[T, K] g;
     matrix[T, K] g_star;
@@ -498,7 +498,7 @@ vector trigonometric_seasonal_rng(vector g1, vector g1_star, real sigma_gamma, a
 //@param int H Forecast horizon
 //@math The rotation recursion continued from (\gamma_{\cdot,T}, \gamma^{*}_{\cdot,T})
 //@return vector[H] Forecast seasonal path for t = T+1,...,T+H
-vector trigonometric_seasonal_forecast_rng(vector g_last, vector g_star_last, real sigma_gamma, array[] vector cos_sin, int H){
+pub vector trigonometric_seasonal_forecast_rng(vector g_last, vector g_star_last, real sigma_gamma, array[] vector cos_sin, int H){
     int K = num_elements(g_last);
     vector[K] g      = g_last;
     vector[K] g_star = g_star_last;
@@ -528,7 +528,7 @@ vector trigonometric_seasonal_forecast_rng(vector g_last, vector g_star_last, re
 //@example vector h = lts::stochastic_volatility(mu_h, sigma_h, rho, z);
 //@math h_1 \sim \mathcal{N}\!\left(\mu_h,\ \frac{\sigma_h}{\sqrt{1-\rho^2}}\right), \quad h_t = \mu_h + \rho(h_{t-1} - \mu_h) + \sigma_h z_t. The first draw uses the stationary distribution, which is available in closed form because the state is scalar.
 //@return vector[T] The log-variance path h. The conditional standard deviation is exp(h/2).
-vector stochastic_volatility(real mu_h, real sigma_h, real rho, vector z){
+pub vector stochastic_volatility(real mu_h, real sigma_h, real rho, vector z){
     int T = num_elements(z);
     vector[T] h;
 
@@ -551,7 +551,7 @@ vector stochastic_volatility(real mu_h, real sigma_h, real rho, vector z){
 //@example target += lts::stochastic_volatility_state_lpdf(h | mu_h, sigma_h, rho);
 //@math \log p(h) = \log\mathcal{N}\!\left(h_1 \mid \mu_h, \frac{\sigma_h}{\sqrt{1-\rho^2}}\right) + \sum_{t=2}^{T}\log\mathcal{N}(h_t \mid \mu_h + \rho(h_{t-1}-\mu_h),\ \sigma_h)
 //@return real Log density of the log-variance path, first point included
-real stochastic_volatility_state_lpdf(vector h, real mu_h, real sigma_h, real rho){
+pub real stochastic_volatility_state_lpdf(vector h, real mu_h, real sigma_h, real rho){
     int T = num_elements(h);
     return normal_lpdf(h[1]    | mu_h, sigma_h / sqrt(1 - square(rho)))
          + normal_lpdf(h[2:T]  | mu_h + rho * (h[1:(T - 1)] - mu_h), sigma_h);
@@ -565,7 +565,7 @@ real stochastic_volatility_state_lpdf(vector h, real mu_h, real sigma_h, real rh
 //@example target += lts::stochastic_volatility_lpdf(y | h, mu);
 //@math \log p(y) = \sum_{t=1}^{T}\log\mathcal{N}\!\left(y_t \mid \mu_t,\ e^{h_t/2}\right)
 //@return real Log density of y_obs given the volatility path
-real stochastic_volatility_lpdf(vector y_obs, vector h, vector mu){
+pub real stochastic_volatility_lpdf(vector y_obs, vector h, vector mu){
     return normal_lpdf(y_obs | mu, exp(h / 2));
 }
 
@@ -577,7 +577,7 @@ real stochastic_volatility_lpdf(vector y_obs, vector h, vector mu){
 //@param int T Path length
 //@math The same recursion, started from the stationary distribution
 //@return vector[T] A simulated log-variance path
-vector stochastic_volatility_rng(real mu_h, real sigma_h, real rho, int T){
+pub vector stochastic_volatility_rng(real mu_h, real sigma_h, real rho, int T){
     vector[T] h;
     // Stationary Initialization
     h[1] = mu_h + normal_rng(0, sigma_h)  / sqrt(1 - square(rho));
@@ -599,7 +599,7 @@ vector stochastic_volatility_rng(real mu_h, real sigma_h, real rho, int T){
 //@example vector h_f = lts::stochastic_volatility_forecast_rng(h[T], mu_h, sigma_h, rho, H);
 //@math h_{T+h} \sim \mathcal{N}(\mu_h + \rho(h_{T+h-1} - \mu_h),\ \sigma_h). The path mean-reverts to \mu_h at rate \rho.
 //@return vector[H] Forecast log-variance path for t = T+1,...,T+H
-vector stochastic_volatility_forecast_rng(real h_last, real mu_h, real sigma_h, real rho, int H){
+pub vector stochastic_volatility_forecast_rng(real h_last, real mu_h, real sigma_h, real rho, int H){
     vector[H] h_f;
     real current = h_last;
 
@@ -619,7 +619,7 @@ vector stochastic_volatility_forecast_rng(real h_last, real mu_h, real sigma_h, 
 //@example vector u = lts::latent_gaussian_counts(rho, sigma_u, z);
 //@math u_1 \sim \mathcal{N}\!\left(0,\ \frac{\sigma_u}{\sqrt{1-\rho^2}}\right), \quad u_t = \rho\,u_{t-1} + \sigma_u z_t
 //@return vector[T] The latent AR(1) path. It is zero-mean by construction, so put the level in the regression.
-vector latent_gaussian_counts(real rho, real sigma_u, vector z){
+pub vector latent_gaussian_counts(real rho, real sigma_u, vector z){
     int T = num_elements(z);
     vector[T] u;
 
@@ -641,7 +641,7 @@ vector latent_gaussian_counts(real rho, real sigma_u, vector z){
 //@example target += lts::latent_gaussian_counts_state_lpdf(u | rho, sigma_u);
 //@math \log p(u) = \log\mathcal{N}\!\left(u_1 \mid 0, \frac{\sigma_u}{\sqrt{1-\rho^2}}\right) + \sum_{t=2}^{T}\log\mathcal{N}(u_t \mid \rho\,u_{t-1},\ \sigma_u)
 //@return real Log density of the latent path, first point included
-real latent_gaussian_counts_state_lpdf(vector u, real rho, real sigma_u){
+pub real latent_gaussian_counts_state_lpdf(vector u, real rho, real sigma_u){
     int T = num_elements(u);
     return normal_lpdf(u[1]   | 0, sigma_u / sqrt(1 - square(rho)))
          + normal_lpdf(u[2:T] | rho * u[1:(T - 1)], sigma_u);
@@ -654,7 +654,7 @@ real latent_gaussian_counts_state_lpdf(vector u, real rho, real sigma_u){
 //@param int T Path length
 //@math The same recursion, started from the stationary distribution
 //@return vector[T] A simulated latent path
-vector latent_gaussian_counts_rng(real rho, real sigma_u, int T){
+pub vector latent_gaussian_counts_rng(real rho, real sigma_u, int T){
     vector[T] u;
 
     // Initialize the Process
@@ -675,7 +675,7 @@ vector latent_gaussian_counts_rng(real rho, real sigma_u, int T){
 //@param int H Forecast horizon
 //@math u_{T+h} \sim \mathcal{N}(\rho\,u_{T+h-1},\ \sigma_u), decaying geometrically toward zero
 //@return vector[H] Forecast latent path for t = T+1,...,T+H
-vector latent_gaussian_counts_forecast_rng(real u_last, real rho, real sigma_u, int H){
+pub vector latent_gaussian_counts_forecast_rng(real u_last, real rho, real sigma_u, int H){
     vector[H] u_f;
     real current = u_last;
 
@@ -695,7 +695,7 @@ vector latent_gaussian_counts_forecast_rng(real u_last, real rho, real sigma_u, 
 //@example target += lts::latent_gaussian_counts_lpmf(y | u, X, beta);
 //@math \log\lambda_t = x_t^\top\beta + u_t, \quad y_t \sim \text{Poisson}(\lambda_t). Scored with poisson_log so the intensity is never exponentiated by hand.
 //@return real Log mass of the observed counts
-real latent_gaussian_counts_lpmf(array[] int y, vector u, matrix X, vector beta){
+pub real latent_gaussian_counts_lpmf(array[] int y, vector u, matrix X, vector beta){
     vector[num_elements(u)] log_lambda = X * beta + u;
     return poisson_log_lpmf(y | log_lambda);
 }
@@ -707,6 +707,6 @@ real latent_gaussian_counts_lpmf(array[] int y, vector u, matrix X, vector beta)
 //@example target += lts::latent_gaussian_counts_lpmf(y | u);
 //@math \log\lambda_t = u_t, \quad y_t \sim \text{Poisson}(\lambda_t). Since u is zero-mean, this has no intercept — add one via the covariate overload unless the counts really are centred on 1.
 //@return real Log mass of the observed counts
-real latent_gaussian_counts_lpmf(array[] int y, vector u){
+pub real latent_gaussian_counts_lpmf(array[] int y, vector u){
     return poisson_log_lpmf(y | u);
 }
