@@ -150,9 +150,149 @@ pub vector local_level_forecast_rng(real mu_last, real sigma_mu, int H){
     return mu_f;
 }
 
+
 // Local Linear Trend ====================================================================================
 //@laplace
-//@brief Local Linear Trend
+//@brief Local Linear Trend. NON-CENTRED (default). Special case of lts::damped_local_linear_trend with rho = 1.
+//@param real delta1 Initial slope
+//@param real mu1 Initial level
+//@param real sigma_delta Slope innovation scale
+//@param real sigma_mu Level innovation scale
+//@param vector zeta_delta Standard normal slope innovations, length T-1
+//@param vector zeta_mu Standard normal level innovations, length T-1
+//@example vector[T] mu = lts::local_linear_trend(delta1, mu1, sigma_delta, sigma_mu, zeta_delta, zeta_mu);
+//@math \delta_t = \delta_{t-1} + \sigma_\delta\,\zeta^{\delta}_t \\ \mu_t = \mu_{t-1} + \delta_{t-1} + \sigma_\mu\,\zeta^{\mu}_t. Unrolled: \mu_t = \mu_1 + (t-1)\delta_1 + \sigma_\delta\sum_{k=2}^{t-1}(t-k)\zeta^{\delta}_k + \sigma_\mu\sum_{k=2}^{t}\zeta^{\mu}_k, so the code uses two cumulative sums instead of a loop.
+//@return vector[T] mu, with T = num_elements(zeta_mu) + 1. The slope path is not returned; get it with lts::local_linear_trend_slope (needed for forecasting).
+pub vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu){
+    int T = num_elements(zeta_mu) + 1;
+
+    // Slope: random walk started at delta1
+    vector[T] delta = append_row(delta1, delta1 + cumulative_sum(sigma_delta * zeta_delta));
+
+    // Level: previous level + previous slope + level shock
+    return append_row(mu1, mu1 + cumulative_sum(delta[1:(T - 1)] + sigma_mu * zeta_mu));
+}
+
+//@laplace
+//@brief Local Linear Trend with covariates in the level increment. NON-CENTRED.
+//@param real delta1 Initial slope
+//@param real mu1 Initial level
+//@param real sigma_delta Slope innovation scale
+//@param real sigma_mu Level innovation scale
+//@param vector zeta_delta Standard normal slope innovations, length T-1
+//@param vector zeta_mu Standard normal level innovations, length T-1
+//@param matrix X Covariates, T rows. Row 1 is never used.
+//@param vector beta Covariate coefficients
+//@example vector[T] mu = lts::local_linear_trend(delta1, mu1, sigma_delta, sigma_mu, zeta_delta, zeta_mu, X, beta);
+//@math \mu_t = \mu_{t-1} + \delta_{t-1} + x_t^\top\beta + \sigma_\mu\zeta^{\mu}_t. As in local_level, the covariate enters the INCREMENT and its effect accumulates (a permanent shift). For a transient effect, add x_t^\top\beta to the linear predictor instead.
+//@return vector[T] mu, with T = num_elements(zeta_mu) + 1
+pub vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu, matrix X, vector beta){
+    int T = num_elements(zeta_mu) + 1;
+
+    vector[T] delta = append_row(delta1, delta1 + cumulative_sum(sigma_delta * zeta_delta));
+
+    return append_row(mu1, mu1 + cumulative_sum(delta[1:(T - 1)] + X[2:T] * beta + sigma_mu * zeta_mu));
+}
+
+//@laplace
+//@brief Slope path of the non-centred Local Linear Trend. Call with the same delta1, sigma_delta and zeta_delta as lts::local_linear_trend.
+//@param real delta1 Initial slope
+//@param real sigma_delta Slope innovation scale
+//@param vector zeta_delta Standard normal slope innovations, length T-1
+//@example vector[T] delta = lts::local_linear_trend_slope(delta1, sigma_delta, zeta_delta);
+//@math \delta_t = \delta_1 + \sigma_\delta\sum_{k=2}^{t}\zeta^{\delta}_k. The level uses delta[1:(T-1)]; delta[T] only matters for the forecast, so pass delta[T] as delta_last to lts::local_linear_trend_forecast_rng.
+//@return vector[T] delta, with T = num_elements(zeta_delta) + 1
+pub vector local_linear_trend_slope(real delta1, real sigma_delta, vector zeta_delta){
+    return append_row(delta1, delta1 + cumulative_sum(sigma_delta * zeta_delta));
+}
+
+//@laplace
+//@brief Local Linear Trend state density. CENTRED alternative to lts::local_linear_trend. Prefer lts::local_linear_trend (non-centred) by default: with weakly informed scales this form has a funnel and may fail to converge (low E-BFMI, R-hat above 1.01) even without many divergences. Use it only when the data pin the state down tightly, and never together with lts::local_linear_trend.
+//@param vector mu The level path, declared as a parameter, length T
+//@param vector delta The slope path, declared as a parameter, length T
+//@param real sigma_mu Level innovation scale
+//@param real sigma_delta Slope innovation scale
+//@example target += lts::local_linear_trend_state_lpdf(mu | delta, sigma_mu, sigma_delta);
+//@math \log p(\mu, \delta) = \sum_{t=2}^{T}\log\mathcal{N}(\mu_t \mid \mu_{t-1} + \delta_{t-1}, \sigma_\mu) + \sum_{t=2}^{T}\log\mathcal{N}(\delta_t \mid \delta_{t-1}, \sigma_\delta). Both paths are scored, so declare both as parameters and give mu[1] and delta[1] their own priors.
+//@return real Joint log density of the level and slope paths given their first values
+pub real local_linear_trend_state_lpdf(vector mu, vector delta, real sigma_mu, real sigma_delta){
+    int T = num_elements(mu);
+    return normal_lpdf(mu[2:T]    | mu[1:(T - 1)] + delta[1:(T - 1)], sigma_mu)
+         + normal_lpdf(delta[2:T] | delta[1:(T - 1)],                 sigma_delta);
+}
+
+//@laplace
+//@brief Local Linear Trend Random Number Generator
+//@param real delta1 Initial slope
+//@param real mu1 Initial level
+//@param real sigma_delta Slope innovation scale
+//@param real sigma_mu Level innovation scale
+//@param int T Path length
+//@math \delta_t \sim \mathcal{N}(\delta_{t-1}, \sigma_\delta), \quad \mu_t \sim \mathcal{N}(\mu_{t-1} + \delta_{t-1}, \sigma_\mu)
+//@return vector[T] A simulated level path
+pub vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigma_mu, int T){
+    vector[T] mu;
+    vector[T] delta;
+    mu[1]    = mu1;
+    delta[1] = delta1;
+
+    for(t in 2:T){
+        delta[t] = delta[t - 1]              + normal_rng(0, sigma_delta);
+        mu[t]    = mu[t - 1] + delta[t - 1]  + normal_rng(0, sigma_mu);
+    }
+    return mu;
+}
+
+//@laplace
+//@brief Local Linear Trend Random Number Generator with covariates
+//@param real delta1 Initial slope
+//@param real mu1 Initial level
+//@param real sigma_delta Slope innovation scale
+//@param real sigma_mu Level innovation scale
+//@param int T Path length
+//@param matrix X Covariates, T rows. Row 1 is never used.
+//@param vector beta Covariate coefficients
+//@math \mu_t \sim \mathcal{N}(\mu_{t-1} + \delta_{t-1} + x_t^\top\beta, \sigma_\mu)
+//@return vector[T] A simulated level path
+pub vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigma_mu, int T, matrix X, vector beta){
+    vector[T] mu;
+    vector[T] delta;
+    mu[1]    = mu1;
+    delta[1] = delta1;
+
+    for(t in 2:T){
+        delta[t] = delta[t - 1]              + normal_rng(0, sigma_delta);
+        mu[t]    = mu[t - 1] + delta[t - 1]  + normal_rng(0, sigma_mu) + X[t] * beta;
+    }
+    return mu;
+}
+
+//@laplace
+//@brief Continue a fitted Local Linear Trend H steps beyond the end of the path
+//@param real mu_last The final fitted level, mu[T]
+//@param real delta_last The final fitted slope, delta[T] (from lts::local_linear_trend_slope)
+//@param real sigma_mu Level innovation scale
+//@param real sigma_delta Slope innovation scale
+//@param int H Forecast horizon
+//@math \delta_{T+h}\sim\mathcal{N}(\delta_{T+h-1},\sigma_\delta), \quad \mu_{T+h}\sim\mathcal{N}(\mu_{T+h-1} + \delta_{T+h-1},\sigma_\mu). The mean forecast is a straight line with the last slope; the variance grows cubically in h, from the slope shocks.
+//@return vector[H] Forecast level path for t = T+1,...,T+H
+pub vector local_linear_trend_forecast_rng(real mu_last, real delta_last, real sigma_mu, real sigma_delta, int H){
+    vector[H] mu_f;
+    real mu_current    = mu_last;
+    real delta_current = delta_last;
+
+    for (h in 1:H) {
+        real delta_next = delta_current + normal_rng(0, sigma_delta);
+        mu_current      = mu_current + delta_current + normal_rng(0, sigma_mu);
+        delta_current   = delta_next;
+        mu_f[h]         = mu_current;
+    }
+    return mu_f;
+}
+
+// Damped Local Linear Trend ====================================================================================
+//@laplace
+//@brief Damped Local Linear Trend
 //@param real delta1 Initial slope
 //@param real mu1 Initial level
 //@param real sigma_delta Slope innovation scale
@@ -160,10 +300,10 @@ pub vector local_level_forecast_rng(real mu_last, real sigma_mu, int H){
 //@param vector zeta_delta Standard normal slope innovations, length T-1
 //@param vector zeta_mu Standard normal level innovations, length T-1
 //@param real rho Slope damping. rho = 1 is the classical local linear trend; rho in (0,1) damps the slope and forecasts far better at long horizons.
-//@example vector mu = lts::local_linear_trend(delta1, mu1, sigma_delta, sigma_mu, zeta_delta, zeta_mu, rho);
+//@example vector mu = lts::damped_local_linear_trend(delta1, mu1, sigma_delta, sigma_mu, zeta_delta, zeta_mu, rho);
 //@math \delta_t = \rho\,\delta_{t-1} + \sigma_\delta\,\zeta^{\delta}_t \\ \mu_t = \mu_{t-1} + \delta_{t-1} + \sigma_\mu\,\zeta^{\mu}_t
 //@return vector[T] mu, with T = num_elements(zeta_mu) + 1. The slope path is internal and not returned.
-pub vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu, real rho){
+pub vector damped_local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu, real rho){
     int T = num_elements(zeta_mu) + 1;
 
     // Initialize the process
@@ -173,16 +313,16 @@ pub vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigm
     mu[1]    = mu1;
     delta[1] = delta1;
 
-    // Local Linear Trend Process for computing mu
+    // Damped Local Linear Trend Process for computing mu
     for(t in 2:T){
-        delta[t] = rho * delta[t - 1]        + sigma_delta * zeta_delta[t -1];
-        mu[t]    = mu[t - 1] + delta[t - 1]  + sigma_mu    * zeta_mu[t - 1];
+        delta[t]  = rho * delta[t - 1]        + sigma_delta * zeta_delta[t -1];
+        mu[t] = mu[t - 1] + delta[t - 1]  + sigma_mu    * zeta_mu[t - 1];
     }
     return mu;
 }
 
 //@laplace
-//@brief Local Linear Trend
+//@brief Damped Local Linear Trend
 //@param real delta1 Initial slope
 //@param real mu1 Initial level
 //@param real sigma_delta Slope innovation scale
@@ -192,10 +332,10 @@ pub vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigm
 //@param real rho Slope damping
 //@param matrix X Covariates, T rows. Row 1 is never used.
 //@param vector beta Covariate coefficients
-//@example vector mu = lts::local_linear_trend(delta1, mu1, sigma_delta, sigma_mu, zeta_delta, zeta_mu, rho, X, beta);
+//@example vector mu = lts::damped_local_linear_trend(delta1, mu1, sigma_delta, sigma_mu, zeta_delta, zeta_mu, rho, X, beta);
 //@math \mu_t = \mu_{t-1} + \delta_{t-1} + x_t^\top\beta + \sigma_\mu\zeta^{\mu}_t. As in local_level, the covariate enters the INCREMENT and its effect accumulates.
 //@return vector[T] mu, with T = num_elements(zeta_mu) + 1
-pub vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu, real rho, matrix X, vector beta){
+pub vector damped_local_linear_trend(real delta1, real mu1, real sigma_delta, real sigma_mu, vector zeta_delta, vector zeta_mu, real rho, matrix X, vector beta){
     int T = num_elements(zeta_mu) + 1;
 
     // Initialize the process
@@ -205,7 +345,7 @@ pub vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigm
     mu[1]    = mu1;
     delta[1] = delta1;
 
-    // Local Linear Trend Process for computing mu with covariates matrix X and beta parameter vector
+    // Damped Local Linear Trend Process for computing mu with covariates matrix X and beta parameter vector
     for(t in 2:T){
         delta[t] = rho * delta[t - 1]        + sigma_delta * zeta_delta[t -1];
         mu[t]    = mu[t - 1] + delta[t - 1]  + sigma_mu    * zeta_mu[t - 1] + X[t] * beta;
@@ -214,23 +354,23 @@ pub vector local_linear_trend(real delta1, real mu1, real sigma_delta, real sigm
 }
 
 //@laplace
-//@brief Local Linear Trend state density. CENTRED alternative to lts::local_linear_trend. Prefer lts::local_linear_trend (non-centred) by default: with weakly informed scales this form has a funnel and may fail to converge (low E-BFMI, R-hat above 1.01) even without many divergences. Use it only when the data pin the state down tightly, and never together with lts::local_linear_trend.
+//@brief Damped Local Linear Trend state density. CENTRED alternative to lts::damped_local_linear_trend. Prefer lts::damped_local_linear_trend (non-centred) by default: with weakly informed scales this form has a funnel and may fail to converge (low E-BFMI, R-hat above 1.01) even without many divergences. Use it only when the data pin the state down tightly, and never together with lts::local_linear_trend.
 //@param vector mu The level path, declared as a parameter, length T
 //@param vector delta The slope path, declared as a parameter, length T
 //@param real sigma_mu Level innovation scale
 //@param real sigma_delta Slope innovation scale
 //@param real rho Slope damping
-//@example target += lts::local_linear_trend_state_lpdf(mu | delta, sigma_mu, sigma_delta, rho);
+//@example target += lts::damped_local_linear_trend_state_lpdf(mu | delta, sigma_mu, sigma_delta, rho);
 //@math \log p(\mu, \delta) = \sum_{t=2}^{T}\log\mathcal{N}(\mu_t \mid \mu_{t-1} + \delta_{t-1}, \sigma_\mu) + \sum_{t=2}^{T}\log\mathcal{N}(\delta_t \mid \rho\,\delta_{t-1}, \sigma_\delta). Both paths are scored, so declare both as parameters and give mu[1] and delta[1] their own priors.
 //@return real Joint log density of the level and slope paths given their first values
-pub real local_linear_trend_state_lpdf(vector mu, vector delta, real sigma_mu, real sigma_delta, real rho){
+pub real damped_local_linear_trend_state_lpdf(vector mu, vector delta, real sigma_mu, real sigma_delta, real rho){
     int T = num_elements(mu);
     return normal_lpdf(mu[2:T]    | mu[1:(T - 1)] + delta[1:(T - 1)], sigma_mu)
          + normal_lpdf(delta[2:T] | rho * delta[1:(T - 1)],           sigma_delta);
 }
 
 //@laplace
-//@brief Local Linear Trend Random Number Generator
+//@brief Damped Local Linear Trend Random Number Generator
 //@param real delta1 Initial slope
 //@param real mu1 Initial level
 //@param real sigma_delta Slope innovation scale
@@ -239,14 +379,14 @@ pub real local_linear_trend_state_lpdf(vector mu, vector delta, real sigma_mu, r
 //@param int T Path length
 //@math \delta_t \sim \mathcal{N}(\rho\delta_{t-1}, \sigma_\delta), \quad \mu_t \sim \mathcal{N}(\mu_{t-1} + \delta_{t-1}, \sigma_\mu)
 //@return vector[T] A simulated level path
-pub vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigma_mu, real rho, int T){
+pub vector damped_local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigma_mu, real rho, int T){
     // Initialize the process
     vector[T] mu;
     vector[T] delta;
     mu[1]    = mu1;
     delta[1] = delta1;
 
-    // Local Linear Trend Process for computing mu
+    // Damped Local Linear Trend Process for computing mu
     for(t in 2:T){
         delta[t] = rho * delta[t - 1]        + normal_rng(0, sigma_delta);
         mu[t]    = mu[t - 1] + delta[t - 1]  + normal_rng(0, sigma_mu);
@@ -255,7 +395,7 @@ pub vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real 
 }
 
 //@laplace
-//@brief Local Linear Trend Random Number Generator
+//@brief Damped Local Linear Trend Random Number Generator
 //@param real delta1 Initial slope
 //@param real mu1 Initial level
 //@param real sigma_delta Slope innovation scale
@@ -266,14 +406,14 @@ pub vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real 
 //@param vector beta Covariate coefficients
 //@math \mu_t \sim \mathcal{N}(\mu_{t-1} + \delta_{t-1} + x_t^\top\beta, \sigma_\mu)
 //@return vector[T] A simulated level path
-pub vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigma_mu, real rho, int T, matrix X, vector beta){
+pub vector damped_local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real sigma_mu, real rho, int T, matrix X, vector beta){
     // Initialize the process
     vector[T] mu;
     vector[T] delta;
     mu[1]    = mu1;
     delta[1] = delta1;
 
-    // Local Linear Trend Process for computing mu
+    // Damped Local Linear Trend Process for computing mu
     for(t in 2:T){
         delta[t] = rho * delta[t - 1]        + normal_rng(0, sigma_delta);
         mu[t]    = mu[t - 1] + delta[t - 1]  + normal_rng(0, sigma_mu) + X[t] * beta;
@@ -282,7 +422,7 @@ pub vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real 
 }
 
 //@laplace
-//@brief Continue a fitted Local Linear Trend H steps beyond the end of the path
+//@brief Continue a fitted Damped Local Linear Trend H steps beyond the end of the path
 //@param real mu_last The final fitted level, mu[T]
 //@param real delta_last The final fitted slope, delta[T]
 //@param real sigma_mu Level innovation scale
@@ -291,7 +431,7 @@ pub vector local_linear_trend_rng(real delta1, real mu1, real sigma_delta, real 
 //@param int H Forecast horizon
 //@math \delta_{T+h}\sim\mathcal{N}(\rho\delta_{T+h-1},\sigma_\delta), \quad \mu_{T+h}\sim\mathcal{N}(\mu_{T+h-1} + \delta_{T+h-1},\sigma_\mu). With rho = 1 the forecast variance grows cubically in h; damping is what keeps long horizons usable.
 //@return vector[H] Forecast level path for t = T+1,...,T+H
-pub vector local_linear_trend_forecast_rng(real mu_last, real delta_last, real sigma_mu, real sigma_delta, real rho, int H){
+pub vector damped_local_linear_trend_forecast_rng(real mu_last, real delta_last, real sigma_mu, real sigma_delta, real rho, int H){
     vector[H] mu_f;
     real mu_current    = mu_last;
     real delta_current = delta_last;
