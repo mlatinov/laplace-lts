@@ -445,6 +445,25 @@ pub vector damped_local_linear_trend_forecast_rng(real mu_last, real delta_last,
     return mu_f;
 }
 
+//@laplace
+//@brief Slope path of the non-centred Damped Local Linear Trend. Call with the same delta1, sigma_delta, zeta_delta and rho as lts::damped_local_linear_trend.
+//@param real delta1 Initial slope
+//@param real sigma_delta Slope innovation scale
+//@param vector zeta_delta Standard normal slope innovations, length T-1
+//@param real rho Slope damping
+//@example vector[T] delta = lts::damped_local_linear_trend_slope(delta1, sigma_delta, zeta_delta, rho);
+//@math \delta_t = \rho\,\delta_{t-1} + \sigma_\delta\,\zeta^{\delta}_t. The level uses delta[1:(T-1)]; delta[T] only matters for the forecast, so pass delta[T] as delta_last to lts::damped_local_linear_trend_forecast_rng.
+//@return vector[T] delta, with T = num_elements(zeta_delta) + 1
+pub vector damped_local_linear_trend_slope(real delta1, real sigma_delta, vector zeta_delta, real rho){
+    int T = num_elements(zeta_delta) + 1;
+    vector[T] delta;
+    delta[1] = delta1;
+    for(t in 2:T){
+        delta[t] = rho * delta[t - 1] + sigma_delta * zeta_delta[t - 1];
+    }
+    return delta;
+}
+
 // Stochastic seasonal ===========================================================================================================
 //@laplace
 //@brief Stochastic seasonal
