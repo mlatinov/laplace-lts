@@ -369,7 +369,7 @@ fit$draws(c("level", "seasonal", "y_forecast"))
 
 [#things-to-know](#things-to-know)
 
-- **Use `target +=`, not `~`.** Laplace rewrites `lts::func(` calls, so write `target += lts::stochastic_volatility_lpdf(y | h, mu)`. The `y ~ lts::stochastic_volatility(...)` form won't resolve.
+- **`~` and `target +=` both work.** `y ~ lts::stochastic_volatility(h, mu);` compiles to `y ~ lts__stochastic_volatility(...)`, which Stan resolves to `lts__stochastic_volatility_lpdf` like any user-defined distribution. Prefer `target += lts::stochastic_volatility_lpdf(y | h, mu);` when you need the full log density (for example to compare models), since `~` lets Stan drop constant terms.
 - **Never use a primary and its `_state_lpdf` together.** One is non-centred, the other centred. Using both counts the state prior twice, compiles cleanly, and gives a silently wrong posterior.
 - **Non-centred is the default for a reason.** The centred parameterization funnels when $\sigma$ is small. If you see divergences that survive `adapt_delta = 0.99`, check which parameterization you're on before touching anything else.
 - **Every component costs one parameter per time point.** There is no Kalman filter here, so the latent path is sampled rather than marginalised. A two-component model on 2000 points is roughly 4000 parameters, which HMC handles but not instantly. Marginalisation is planned, not present.
